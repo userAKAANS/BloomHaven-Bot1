@@ -21,9 +21,8 @@ client.once('ready', async () => {
 
   // 🔁 Register slash commands after 2 second delay
   setTimeout(async () => {
-  if (true) {
+    if (true) {
       const { REST, Routes } = require('discord.js');
-      const fs = require('fs');
 
       console.log('⌛ Waiting to register slash commands...');
 
@@ -72,7 +71,7 @@ app.use(bodyParser.json());
 
 app.get("/", (req, res) => res.send("Bloom Haven Bot is alive"));
 
-// 🛒 Shopify Webhook to Auto-DM Buyers
+// 🛒 Shopify Webhook to Auto-DM Buyers (with guild member fallback)
 app.post('/shopify-webhook', async (req, res) => {
   try {
     const order = req.body;
@@ -83,7 +82,20 @@ app.post('/shopify-webhook', async (req, res) => {
 
     console.log(`📦 New Order from ${discordTag} | Order #${orderId} | Roblox: ${robloxUser}`);
 
-    const targetUser = client.users.cache.find(user => user.tag === discordTag);
+    let targetUser = client.users.cache.find(user => user.tag === discordTag);
+
+    if (!targetUser) {
+      try {
+        const guild = client.guilds.cache.first();
+        const members = await guild.members.fetch();
+        const member = members.find(m => m.user.tag === discordTag);
+        if (member) {
+          targetUser = member.user;
+        }
+      } catch (e) {
+        console.warn('❌ Could not fetch user from guild:', e);
+      }
+    }
 
     if (targetUser) {
       await targetUser.send(
@@ -91,7 +103,7 @@ app.post('/shopify-webhook', async (req, res) => {
       );
       console.log(`📨 DM sent to ${discordTag}`);
     } else {
-      console.warn(`⚠️ Could not DM ${discordTag} – user not found in cache.`);
+      console.warn(`⚠️ Still couldn’t DM ${discordTag} – not found in guild.`);
     }
 
     res.status(200).send('Webhook received');
