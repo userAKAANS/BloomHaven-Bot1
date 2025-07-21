@@ -5,7 +5,12 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMembers
+  ],
   partials: ['CHANNEL']
 });
 
@@ -19,7 +24,6 @@ for (const file of commandFiles) {
 client.once('ready', async () => {
   console.log(`✅ Bloom Haven Bot is online as ${client.user.tag}`);
 
-  // 🔁 Register slash commands after 2 second delay
   setTimeout(async () => {
     if (true) {
       const { REST, Routes } = require('discord.js');
@@ -71,7 +75,7 @@ app.use(bodyParser.json());
 
 app.get("/", (req, res) => res.send("Bloom Haven Bot is alive"));
 
-// 🛒 Shopify Webhook to Auto-DM Buyers (with guild member fallback)
+// 🛒 Shopify Webhook to Auto-DM Buyers
 app.post('/shopify-webhook', async (req, res) => {
   try {
     const order = req.body;
@@ -87,13 +91,13 @@ app.post('/shopify-webhook', async (req, res) => {
     if (!targetUser) {
       try {
         const guild = client.guilds.cache.first();
-        const members = await guild.members.fetch();
-        const member = members.find(m => m.user.tag === discordTag);
-        if (member) {
-          targetUser = member.user;
+        const members = await guild.members.list({ limit: 1000 });
+        const match = members.find(member => member.user.tag === discordTag);
+        if (match) {
+          targetUser = match.user;
         }
       } catch (e) {
-        console.warn('❌ Could not fetch user from guild:', e);
+        console.warn('❌ Could not fetch specific members:', e);
       }
     }
 
