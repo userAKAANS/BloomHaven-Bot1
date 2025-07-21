@@ -16,8 +16,34 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command);
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`✅ Bloom Haven Bot is online as ${client.user.tag}`);
+
+  if (process.env.REGISTER_COMMANDS === 'true') {
+    const { REST, Routes } = require('discord.js');
+    const fs = require('fs');
+
+    const commands = [];
+    const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+
+    for (const file of commandFiles) {
+      const command = require(`./commands/${file}`);
+      commands.push(command.data.toJSON());
+    }
+
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+    try {
+      console.log('📤 Registering slash commands...');
+      await rest.put(
+        Routes.applicationCommands('1396258538460020856'),
+        { body: commands }
+      );
+      console.log('✅ Slash commands registered successfully.');
+    } catch (error) {
+      console.error('❌ Failed to register commands:', error);
+    }
+  }
 });
 
 client.on('interactionCreate', async interaction => {
