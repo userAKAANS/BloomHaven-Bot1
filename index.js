@@ -75,29 +75,24 @@ app.use(bodyParser.json());
 
 app.get("/", (req, res) => res.send("Bloom Haven Bot is alive"));
 
-// 🛒 Shopify Webhook to Auto-DM Buyers
+// 🛒 Shopify Webhook to Auto-DM Buyers using Discord ID
 app.post('/shopify-webhook', async (req, res) => {
   try {
     const order = req.body;
 
     const robloxUser = order.customer?.first_name || 'Unknown Roblox User';
-    const discordTag = order.customer?.last_name || 'Unknown#0000';
+    const discordId = order.customer?.last_name || null; // must be the Discord ID now
     const orderId = order.name || 'No Order ID';
 
-    console.log(`📦 New Order from ${discordTag} | Order #${orderId} | Roblox: ${robloxUser}`);
+    console.log(`📦 New Order from Discord ID: ${discordId} | Order #${orderId} | Roblox: ${robloxUser}`);
 
-    let targetUser = client.users.cache.find(user => user.tag === discordTag);
+    let targetUser = null;
 
-    if (!targetUser) {
+    if (discordId) {
       try {
-        const guild = client.guilds.cache.first();
-        const members = await guild.members.list({ limit: 1000 });
-        const match = members.find(member => member.user.tag === discordTag);
-        if (match) {
-          targetUser = match.user;
-        }
+        targetUser = await client.users.fetch(discordId);
       } catch (e) {
-        console.warn('❌ Could not fetch specific members:', e);
+        console.warn(`❌ Could not fetch user with ID ${discordId}:`, e);
       }
     }
 
@@ -105,9 +100,9 @@ app.post('/shopify-webhook', async (req, res) => {
       await targetUser.send(
         `✅ Thanks for ordering from **Bloom Haven**!\n\nYour order **${orderId}** was received.\nWe'll deliver your items in-game to **${robloxUser}** soon!`
       );
-      console.log(`📨 DM sent to ${discordTag}`);
+      console.log(`📨 DM sent to ${discordId}`);
     } else {
-      console.warn(`⚠️ Still couldn’t DM ${discordTag} – not found in guild.`);
+      console.warn(`⚠️ Couldn’t DM user with ID ${discordId} – not reachable.`);
     }
 
     res.status(200).send('Webhook received');
