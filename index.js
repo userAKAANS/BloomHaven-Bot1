@@ -21,7 +21,7 @@ client.once('ready', async () => {
 
   // 🔁 Register slash commands after 2 second delay
   setTimeout(async () => {
-    if (process.env.REGISTER_COMMANDS === 'true') {
+  if (true) {
       const { REST, Routes } = require('discord.js');
       const fs = require('fs');
 
