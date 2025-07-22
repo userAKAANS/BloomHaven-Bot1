@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -24,20 +24,16 @@ module.exports = {
     const itemName = interaction.options.getString('item');
     const user = interaction.options.getUser('user');
 
+    // Save order info to orders.json
     const ordersPath = path.join(__dirname, '..', 'orders.json');
     let orders = {};
     if (fs.existsSync(ordersPath)) {
       orders = JSON.parse(fs.readFileSync(ordersPath, 'utf8'));
     }
-
-    orders[orderId] = {
-      item: itemName,
-      userId: user.id,
-      logMessageId: orders[orderId]?.logMessageId || null
-    };
-
+    orders[orderId] = { item: itemName, userId: user.id };
     fs.writeFileSync(ordersPath, JSON.stringify(orders, null, 2));
 
+    // DM the user
     try {
       await user.send(
         `💵 **Payment Confirmed Automatically**\n\n` +
@@ -50,29 +46,26 @@ module.exports = {
       console.warn(`❌ Couldn't DM user: ${err}`);
     }
 
-    // Try editing the order log message
+    // Edit original order log embed
     try {
+      const messageMapPath = path.join(__dirname, '..', 'messageMap.json');
+      if (!fs.existsSync(messageMapPath)) return interaction.reply({ content: '⚠️ messageMap.json not found.', ephemeral: true });
+
+      const messageMap = JSON.parse(fs.readFileSync(messageMapPath, 'utf8'));
+      const messageId = messageMap[orderId];
       const logChannelId = '1397212138753495062';
       const logChannel = await interaction.client.channels.fetch(logChannelId);
-      const messageId = orders[orderId]?.logMessageId;
+      const msg = await logChannel.messages.fetch(messageId);
 
-      if (logChannel && messageId) {
-        const message = await logChannel.messages.fetch(messageId);
-        const embed = message.embeds[0];
-        const updatedFields = embed.fields.map(field => {
-          if (field.name === '💳 Payment') {
-            return { name: '💳 Payment', value: '✅ Payment Confirmed', inline: true };
-          }
-          return field;
-        });
+      const originalEmbed = msg.embeds[0];
+      const updatedFields = originalEmbed.fields.map(field =>
+        field.name === '📌 Status'
+          ? { name: '📌 Status', value: '✅ Payment Confirmed', inline: false }
+          : field
+      );
 
-        await message.edit({
-          embeds: [{
-            ...embed.toJSON(),
-            fields: updatedFields
-          }]
-        });
-      }
+      const updatedEmbed = EmbedBuilder.from(originalEmbed).setFields(updatedFields);
+      await msg.edit({ embeds: [updatedEmbed] });
     } catch (e) {
       console.error('❌ Could not update order log message:', e);
     }
