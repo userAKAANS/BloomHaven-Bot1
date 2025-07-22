@@ -52,7 +52,7 @@ client.on('interactionCreate', async interaction => {
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
   try {
-    await command.execute(interaction);
+    await command.execute(interaction, client);
   } catch (error) {
     console.error(error);
     await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
@@ -61,7 +61,7 @@ client.on('interactionCreate', async interaction => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// 🧠 Store message IDs by order ID
+// 💾 Load existing messageMap
 const messageMapPath = './messageMap.json';
 let messageMap = {};
 if (fs.existsSync(messageMapPath)) {
@@ -136,7 +136,7 @@ app.post('/shopify-webhook', async (req, res) => {
       console.log(`📨 DM sent to ${discordId}`);
     }
 
-    // 📄 Order log to staff channel
+    // 🧾 Log to order log channel
     const logChannelId = '1397212138753495062';
     const logChannel = await client.channels.fetch(logChannelId).catch(() => null);
 
@@ -167,5 +167,4 @@ app.post('/shopify-webhook', async (req, res) => {
     res.status(500).send('Internal Error');
   }
 });
-
 app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
